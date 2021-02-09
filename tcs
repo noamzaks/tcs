@@ -1,0 +1,64 @@
+#!/usr/bin/env python3
+
+from sys import platform
+from os import getcwd, system, listdir, popen
+from os.path import split, exists, isfile, join
+
+print(r"""
+| |_ ___ ___ 
+| __/ __/ __|
+| || (__\__ \
+ \__\___|___/""".strip())
+
+print("\nEnter question number")
+homework = -1
+question = int(input())
+current_folder = split(getcwd())[-1]
+
+if current_folder.startswith("hw") and current_folder[2:].isdigit():
+    homework = int(current_folder[2:])
+    print(f"Automatically detected homework number {homework} from current folder")
+    print("Press enter to accept this or a number to change the homework number")
+    x = input()
+    if x:
+        homework = int(x)
+else:
+    print("Couldn't detect homework nubmer from current folder")
+    print("Please enter the homework number")
+    homework = int(input())
+
+filename = f"hw{homework}q{question}"
+source_file = filename + ".c"
+executable_file = filename + ".out"
+if not exists(source_file):
+    print("Couldn't find source file.")
+    exit(-1)
+
+if (system(f"clang-format -i {source_file}") != 0):
+    print("Warning: Formatting was unsuccessful")
+
+if (system(f"clang -std=c99 {source_file} -o {executable_file}") != 0):
+    print("Warning: Compilation was unsuccessful")
+
+files = sorted(listdir("."))
+
+for f in files:
+    if not isfile(f):
+        continue
+    if f.startswith(filename + "in"):
+        test_number = f.split(".")[0][len(filename)+2:]
+        expected_output = f"{filename}out{test_number}.txt"
+        if test_number.isdigit() and exists(expected_output):
+            print(f"\nRunning test {test_number}")
+            command = join(".", executable_file) + f" < {f}"
+            print(popen(command).read())
+            actual_output_file = f"{filename}actual{test_number}.txt"
+            system(command + f" > {actual_output_file}")
+            
+            if platform == "linux" or platform == "linux2" or platform == "darwin":
+                diff_result = popen(f"diff --strip-trailing-cr {actual_output_file} {expected_output}").read()
+                if diff_result == "":
+                    print("Test Passed!")
+                else:
+                    print("Test failed. Difference:")
+                    print(diff_result)
