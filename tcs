@@ -17,6 +17,9 @@ print(Color.blue + r"""
 | || (__\__ \
  \__\___|___/""".strip() + Color.clear)
 
+result = Color.green + "Hurray! You finished the question." + Color.clear
+error_result = Color.red + "Fixes are required." + Color.clear
+
 print("\nEnter question number")
 homework = -1
 question = int(input())
@@ -69,3 +72,6 @@ for f in files:
                 else:
                     print(Color.red + "Test failed. Difference:")
                     print(diff_result + Color.clear)
+                    result = error_result
+
+print(result)
