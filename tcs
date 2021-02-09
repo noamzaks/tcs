@@ -38,10 +38,10 @@ if current_folder.startswith("hw") and current_folder[2:].isdigit():
     homework = int(current_folder[2:])
     print(
         Color.green
-        + f"Automatically detected homework number {homework} from current folder"
+        + f"Detected homework number {homework} from current folder"
         + Color.clear
     )
-    print("Press enter to confirm or a number to change the homework number")
+    print("Press enter to confirm or a number to change it")
     x = input()
     if x:
         homework = int(x)
@@ -92,53 +92,63 @@ if args.package:
         exit(-1)
     exit(0)
 
-result = Color.green + "Hurray! You finished the question." + Color.clear
+result = Color.green + "Hurray! Everything worked. Give yourself a pat on the back." + Color.clear
 error_result = Color.red + "Fixes are required." + Color.clear
+unknown_error_result = Color.red + "An error occurred" + Color.clear
 
-print("\nEnter question number")
-question = int(input())
-
-filename = f"hw{homework}q{question}"
-source_file = filename + ".c"
-executable_file = filename + ".out"
-if not exists(source_file):
-    print(Color.red + "Couldn't find source file " + source_file + Color.clear)
-    exit(-1)
-
-if system(f"clang-format -i {source_file}") != 0:
-    print(Color.red + "Warning: Formatting was unsuccessful" + Color.clear)
+options = [(f.split(".")[0].split("q")[1]) for f in files if f.startswith(f"hw{homework}q") and f.endswith(".c")]
+if len(options) == 0:
+    print(Color.red + f"No files matching hw{homework}q*.c found" + Color.clear)
+    result = unknown_error_result
 else:
-    print(Color.green + "Formatted" + Color.clear)
+    print(Color.green + "Found questions " + ", ".join(map(str, options)) + Color.clear)
+    print("Press enter to check all or space-separated questions like '1 3'")
+    x = input()
+    if x:
+        options = [int(i) for i in x.split(" ")]
 
-if system(f"clang -std=c99 {source_file} -o {executable_file}") != 0:
-    print(Color.red + "Warning: Compilation was unsuccessful" + Color.clear)
-else:
-    print(Color.green + "Compiled" + Color.clear)
+for question in options:
+    filename = f"hw{homework}q{question}"
+    print("\n\n" + Color.blue + "Running Question " + filename.split(".")[0].split("q")[1])
+    source_file = filename + ".c"
+    executable_file = filename + ".out"
+    if not exists(source_file):
+        print(Color.red + "Couldn't find source file " + source_file + Color.clear)
+        exit(-1)
 
-for f in files:
-    if not isfile(f):
-        continue
-    if f.startswith(filename + "in"):
-        test_number = f.split(".")[0][len(filename) + 2 :]
-        expected_output = f"{filename}out{test_number}.txt"
-        if test_number.isdigit() and exists(expected_output):
-            print(Color.blue + f"\nRunning test {test_number}" + Color.clear)
-            command = join(".", executable_file) + f" < {f}"
-            print(popen(command).read())
-            actual_output_file = f"{filename}actual{test_number}.txt"
-            system(command + f" > {actual_output_file}")
+    if system(f"clang-format -i {source_file}") != 0:
+        print(Color.red + "Warning: Formatting was unsuccessful" + Color.clear)
+    else:
+        print(Color.green + "Formatted" + Color.clear)
 
-            if platform == "linux" or platform == "linux2" or platform == "darwin":
-                diff_result = popen(
-                    f"diff --strip-trailing-cr {actual_output_file} {expected_output}"
-                ).read()
-                if diff_result == "":
-                    print(Color.green + "Test Passed!" + Color.clear)
+    if system(f"clang -std=c99 {source_file} -o {executable_file}") != 0:
+        print(Color.red + "Warning: Compilation was unsuccessful" + Color.clear)
+    else:
+        print(Color.green + "Compiled" + Color.clear)
+
+    for f in files:
+        if not isfile(f):
+            continue
+        if f.startswith(filename + "in"):
+            test_number = f.split(".")[0][len(filename) + 2 :]
+            expected_output = f"{filename}out{test_number}.txt"
+            if test_number.isdigit() and exists(expected_output):
+                print(Color.blue + f"\nRunning test {test_number}" + Color.clear)
+                command = join(".", executable_file) + f" < {f}"
+                actual_output_file = f"{filename}actual{test_number}.txt"
+                system(command + f" > {actual_output_file}")
+
+                if platform == "linux" or platform == "linux2" or platform == "darwin":
+                    diff_result = popen(
+                        f"diff --strip-trailing-cr {actual_output_file} {expected_output}"
+                    ).read()
+                    if diff_result == "":
+                        print(Color.green + "Test Passed!" + Color.clear)
+                    else:
+                        print(Color.red + "Test failed. Difference:")
+                        print(diff_result + Color.clear)
+                        result = error_result
                 else:
-                    print(Color.red + "Test failed. Difference:")
-                    print(diff_result + Color.clear)
-                    result = error_result
-            else:
-                print(Color.red + "This platform does not support testing yet" + Color.clear)
+                    print(Color.red + "This platform does not support testing yet" + Color.clear)
 
 print("\n" + result)
