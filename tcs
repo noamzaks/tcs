@@ -1,34 +1,47 @@
 #!/usr/bin/env python3
 
+import argparse
 from sys import platform
 from os import getcwd, system, listdir, popen
 from os.path import split, exists, isfile, join
+from shutil import copy
+
 
 class Color:
-    blue = '\033[34m'
-    green = '\033[32m'
-    red = '\033[31m'
-    yellow = '\033[33m'
-    clear = '\033[0m'
+    blue = "\033[34m"
+    green = "\033[32m"
+    red = "\033[31m"
+    yellow = "\033[33m"
+    clear = "\033[0m"
 
-print(Color.blue + r"""
+
+print(
+    Color.blue
+    + r"""
 | |_ ___ ___ 
 | __/ __/ __|
 | || (__\__ \
- \__\___|___/""".strip() + Color.clear)
+ \__\___|___/""".strip()
+    + Color.clear
+)
 
-result = Color.green + "Hurray! You finished the question." + Color.clear
-error_result = Color.red + "Fixes are required." + Color.clear
 
-print("\nEnter question number")
-homework = -1
-question = int(input())
+parser = argparse.ArgumentParser(description="tcs argument parser")
+parser.add_argument("--package", help="create zip", dest="package", action="store_true")
+args = parser.parse_args()
+files = sorted(listdir("."))
+
 current_folder = split(getcwd())[-1]
 
+homework = -1
 if current_folder.startswith("hw") and current_folder[2:].isdigit():
     homework = int(current_folder[2:])
-    print(Color.green + f"Automatically detected homework number {homework} from current folder" + Color.clear)
-    print("Press enter to accept this or a number to change the homework number")
+    print(
+        Color.green
+        + f"Automatically detected homework number {homework} from current folder"
+        + Color.clear
+    )
+    print("Press enter to confirm or a number to change the homework number")
     x = input()
     if x:
         homework = int(x)
@@ -37,26 +50,76 @@ else:
     print("Please enter the homework number")
     homework = int(input())
 
+if args.package:
+    print("Packaging zip")
+
+    # Always copy parent's student.txt to stay updated
+    current_directory_student_file = join(".", "student.txt")
+    student_file = join("..", "student.txt")
+    if not exists(student_file) and not exists(current_directory_student_file):
+        print("Couldn't find student.txt file.")
+        exit(-1)
+    copy(student_file, current_directory_student_file)
+    print(
+        Color.green
+        + "Automatically copying "
+        + Color.blue
+        + "student.txt"
+        + Color.green
+        + " from parent directory"
+        + Color.clear
+    )
+
+    files_in_zip = [f + " " for f in files if f.endswith(".c")] + [
+        current_directory_student_file
+    ]
+
+    if platform == "linux" or platform == "linux2" or platform == "darwin":
+        zip_file = f"hw{homework}.zip"
+        command = f"zip {zip_file} " + "".join(files_in_zip)
+        print("Running " + Color.yellow + command + Color.clear)
+        if system(f"zip {zip_file} " + "".join(files_in_zip)) == 0:
+            print(
+                Color.green
+                + f"Successfully packaged! You may verify and submit {zip_file}"
+                + Color.clear
+            )
+        else:
+            print(Color.red + "Packaging failed." + Color.clear)
+            exit(-1)
+    else:
+        print(Color.red + "This platform doesn't have packaging support yet" + Color.clear)
+        exit(-1)
+    exit(0)
+
+result = Color.green + "Hurray! You finished the question." + Color.clear
+error_result = Color.red + "Fixes are required." + Color.clear
+
+print("\nEnter question number")
+question = int(input())
+
 filename = f"hw{homework}q{question}"
 source_file = filename + ".c"
 executable_file = filename + ".out"
 if not exists(source_file):
-    print("Couldn't find source file.")
+    print(Color.red + "Couldn't find source file " + source_file + Color.clear)
     exit(-1)
 
-if (system(f"clang-format -i {source_file}") != 0):
+if system(f"clang-format -i {source_file}") != 0:
     print(Color.red + "Warning: Formatting was unsuccessful" + Color.clear)
+else:
+    print(Color.green + "Formatted" + Color.clear)
 
-if (system(f"clang -std=c99 {source_file} -o {executable_file}") != 0):
+if system(f"clang -std=c99 {source_file} -o {executable_file}") != 0:
     print(Color.red + "Warning: Compilation was unsuccessful" + Color.clear)
-
-files = sorted(listdir("."))
+else:
+    print(Color.green + "Compiled" + Color.clear)
 
 for f in files:
     if not isfile(f):
         continue
     if f.startswith(filename + "in"):
-        test_number = f.split(".")[0][len(filename)+2:]
+        test_number = f.split(".")[0][len(filename) + 2 :]
         expected_output = f"{filename}out{test_number}.txt"
         if test_number.isdigit() and exists(expected_output):
             print(Color.blue + f"\nRunning test {test_number}" + Color.clear)
@@ -64,14 +127,18 @@ for f in files:
             print(popen(command).read())
             actual_output_file = f"{filename}actual{test_number}.txt"
             system(command + f" > {actual_output_file}")
-            
+
             if platform == "linux" or platform == "linux2" or platform == "darwin":
-                diff_result = popen(f"diff --strip-trailing-cr {actual_output_file} {expected_output}").read()
+                diff_result = popen(
+                    f"diff --strip-trailing-cr {actual_output_file} {expected_output}"
+                ).read()
                 if diff_result == "":
                     print(Color.green + "Test Passed!" + Color.clear)
                 else:
                     print(Color.red + "Test failed. Difference:")
                     print(diff_result + Color.clear)
                     result = error_result
+            else:
+                print(Color.red + "This platform does not support testing yet" + Color.clear)
 
-print(result)
+print("\n" + result)
