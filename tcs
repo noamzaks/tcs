@@ -4,11 +4,18 @@ from sys import platform
 from os import getcwd, system, listdir, popen
 from os.path import split, exists, isfile, join
 
-print(r"""
+class Color:
+    blue = '\033[34m'
+    green = '\033[32m'
+    red = '\033[31m'
+    yellow = '\033[33m'
+    clear = '\033[0m'
+
+print(Color.blue + r"""
 | |_ ___ ___ 
 | __/ __/ __|
 | || (__\__ \
- \__\___|___/""".strip())
+ \__\___|___/""".strip() + Color.clear)
 
 print("\nEnter question number")
 homework = -1
@@ -17,7 +24,7 @@ current_folder = split(getcwd())[-1]
 
 if current_folder.startswith("hw") and current_folder[2:].isdigit():
     homework = int(current_folder[2:])
-    print(f"Automatically detected homework number {homework} from current folder")
+    print(Color.green + f"Automatically detected homework number {homework} from current folder" + Color.clear)
     print("Press enter to accept this or a number to change the homework number")
     x = input()
     if x:
@@ -35,10 +42,10 @@ if not exists(source_file):
     exit(-1)
 
 if (system(f"clang-format -i {source_file}") != 0):
-    print("Warning: Formatting was unsuccessful")
+    print(Color.red + "Warning: Formatting was unsuccessful" + Color.clear)
 
 if (system(f"clang -std=c99 {source_file} -o {executable_file}") != 0):
-    print("Warning: Compilation was unsuccessful")
+    print(Color.red + "Warning: Compilation was unsuccessful" + Color.clear)
 
 files = sorted(listdir("."))
 
@@ -49,7 +56,7 @@ for f in files:
         test_number = f.split(".")[0][len(filename)+2:]
         expected_output = f"{filename}out{test_number}.txt"
         if test_number.isdigit() and exists(expected_output):
-            print(f"\nRunning test {test_number}")
+            print(Color.blue + f"\nRunning test {test_number}" + Color.clear)
             command = join(".", executable_file) + f" < {f}"
             print(popen(command).read())
             actual_output_file = f"{filename}actual{test_number}.txt"
@@ -58,7 +65,7 @@ for f in files:
             if platform == "linux" or platform == "linux2" or platform == "darwin":
                 diff_result = popen(f"diff --strip-trailing-cr {actual_output_file} {expected_output}").read()
                 if diff_result == "":
-                    print("Test Passed!")
+                    print(Color.green + "Test Passed!" + Color.clear)
                 else:
-                    print("Test failed. Difference:")
-                    print(diff_result)
+                    print(Color.red + "Test failed. Difference:")
+                    print(diff_result + Color.clear)
