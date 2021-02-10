@@ -18,4 +18,4 @@ choco version >nul 2>&1 || (
     echo or install clang, clang-format and chromedriver manually.
 )
 
-choco install llvm chromedriver
+choco install llvm selenium-chrome-driver
