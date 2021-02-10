@@ -10,6 +10,7 @@ TCS depends on the following:
 
 - Clang & Clang Format available in the system path.
 - The `diff` and `zip` commands on Unix and Linux.
+- The `selenium` package and `chromedriver` executable for the self-test website command.
 
 ## Folder Structure
 
@@ -31,3 +32,5 @@ It will be easier for you (and for tcs) if you use the same structure as the fol
 If you run `tcs`, you will be prompted to select a homework number and a question number. Your code will be formatted with `clang-format`, compiled with `clang` and if you have tests in the form of `in` and `out` txt files, your code will be run and checked (with `diff`).
 
 If you run `tcs --package`, you'll get a zip file containing your code and the `student.txt` file. It will be created in the same directory, e.g. `hw1.zip` will be created inside the hw1 folder, when you run `tcs --package` inside the hw1 folder. All `hw1q*.c` files in the directory are added (so feel free to create random `lmao.c` or `troll.c` or the occasional `why.c`).
+
+If you run `tcs --self-test-website`, you'll get a Chrome window opened with the self test website. You'll need to sign in manually or with tcs, and then tcs will select the homework and question, upload the file, and run the self tester. It will update you on the results.

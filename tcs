@@ -5,7 +5,7 @@ from sys import platform
 from os import getcwd, system, listdir, popen
 from os.path import split, exists, isfile, join
 from shutil import copy
-
+from getpass import getpass
 
 class Color:
     blue = "\033[34m"
@@ -28,7 +28,18 @@ print(
 
 parser = argparse.ArgumentParser(description="tcs argument parser")
 parser.add_argument("--package", help="create zip", dest="package", action="store_true")
+parser.add_argument("--self-test-website", help="use the online tester at https://cs23411440hw.cs.technion.ac.il", dest="test_website", action="store_true")
 args = parser.parse_args()
+
+print(Color.green + "Mode:" + Color.clear, end=" ")
+if args.package:
+    print("Packaging zip")
+elif args.test_website:
+    print("Deploy to self testing website")
+else:
+    print("Manual formatting & testing")
+print()
+
 files = sorted(listdir("."))
 
 current_folder = split(getcwd())[-1]
@@ -70,9 +81,9 @@ if args.package:
         + Color.clear
     )
 
-    files_in_zip = [f + " " for f in files if f.startswith(f"hw{homework}q") and f.endswith(".c")] + [
-        current_directory_student_file
-    ]
+    files_in_zip = [
+        f + " " for f in files if f.startswith(f"hw{homework}q") and f.endswith(".c")
+    ] + [current_directory_student_file]
 
     if platform == "linux" or platform == "linux2" or platform == "darwin":
         zip_file = f"hw{homework}.zip"
@@ -88,29 +99,82 @@ if args.package:
             print(Color.red + "Packaging failed." + Color.clear)
             exit(-1)
     else:
-        print(Color.red + "This platform doesn't have packaging support yet" + Color.clear)
+        print(
+            Color.red + "This platform doesn't have packaging support yet" + Color.clear
+        )
         exit(-1)
     exit(0)
 
-result = Color.green + "Hurray! Everything worked. Give yourself a pat on the back." + Color.clear
+result = (
+    Color.green
+    + "Hurray! Everything worked. Give yourself a pat on the back."
+    + Color.clear
+)
 error_result = Color.red + "Fixes are required." + Color.clear
 unknown_error_result = Color.red + "An error occurred" + Color.clear
 
-options = [(f.split(".")[0].split("q")[1]) for f in files if f.startswith(f"hw{homework}q") and f.endswith(".c")]
+options = [
+    (f.split(".")[0].split("q")[1])
+    for f in files
+    if f.startswith(f"hw{homework}q") and f.endswith(".c")
+]
 if len(options) == 0:
     print(Color.red + f"No files matching hw{homework}q*.c found" + Color.clear)
     result = unknown_error_result
 else:
     questions = "questions" if len(options) > 1 else "question"
-    print(Color.green + f"Found {questions} " + ", ".join(map(str, options)) + Color.clear)
+    print(
+        Color.green + f"Found {questions} " + ", ".join(map(str, options)) + Color.clear
+    )
     print("Press enter to check all or space-separated questions e.g. '1 3'")
     x = input()
     if x:
         options = [int(i) for i in x.split(" ")]
 
+if args.test_website:
+    try:
+        from selenium.webdriver import Chrome
+        from selenium.webdriver.support.ui import Select
+
+        driver = Chrome()
+        driver.get("https://cs23411440hw.cs.technion.ac.il")
+        
+        print("Please enter your technion username (without @campus.technion.ac.il or @technion.ac.il)")
+        print("Press enter if you signed in on the website")
+        username = input()
+        if not username == "":
+            print("Please enter your technion password")
+            password = getpass()
+            
+            driver.find_element_by_id("username").send_keys(username)
+            driver.find_element_by_id("password").send_keys(password)
+            driver.find_element_by_id("submit").click()
+
+        driver.find_element_by_id("ID").send_keys("12345678")
+        Select(driver.find_element_by_id("Hwn")).select_by_value(str(homework))
+        Select(driver.find_element_by_id("Ques")).select_by_value(str(options[0]))
+        driver.find_element_by_id("hw").send_keys(join(getcwd(), f"hw{homework}q{options[0]}.c"))
+        driver.find_element_by_id("submit").click()
+
+        for tr in driver.find_element_by_css_selector("tbody").find_elements_by_xpath(".//tr")[1:]:
+            text = tr.text
+            if "עבר" in text:
+                print(Color.green + "Test " + text.split(" ")[1] + " passed!" + Color.clear)
+            else:
+                print(Color.red + "Test " + text.split(" ")[1] + " failed." + Color.clear)
+
+        driver.close()
+        exit(0)
+    except ModuleNotFoundError:
+        print(Color.red + "Selenium must be installed to use this feature" + Color.clear)
+        print("You can install it with `pip install selenium`")
+        exit(-1)
+
 for question in options:
     filename = f"hw{homework}q{question}"
-    print("\n" + Color.blue + "Running question " + filename.split(".")[0].split("q")[1])
+    print(
+        "\n" + Color.blue + "Running question " + filename.split(".")[0].split("q")[1]
+    )
     source_file = filename + ".c"
     executable_file = filename + ".out"
     if not exists(source_file):
@@ -150,7 +214,11 @@ for question in options:
                         print(diff_result + Color.clear)
                         result = error_result
                 else:
-                    print(Color.red + "This platform does not support testing yet" + Color.clear)
+                    print(
+                        Color.red
+                        + "This platform does not support testing yet"
+                        + Color.clear
+                    )
     print()
 
 print(result)
