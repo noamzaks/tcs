@@ -82,26 +82,31 @@ if args.package:
     )
 
     files_in_zip = [
-        f + " " for f in files if f.startswith(f"hw{homework}q") and f.endswith(".c")
+        f for f in files if f.startswith(f"hw{homework}q") and f.endswith(".c")
     ] + [current_directory_student_file]
 
+    zip_file = f"hw{homework}.zip"
+    command = ""
     if platform == "linux" or platform == "linux2" or platform == "darwin":
-        zip_file = f"hw{homework}.zip"
-        command = f"zip {zip_file} " + "".join(files_in_zip)
-        print("Running " + Color.yellow + command + Color.clear)
-        if system(f"zip {zip_file} " + "".join(files_in_zip)) == 0:
-            print(
-                Color.green
-                + f"Successfully packaged! You may verify and submit {zip_file}"
-                + Color.clear
-            )
-        else:
-            print(Color.red + "Packaging failed." + Color.clear)
-            exit(-1)
+        command = f"zip {zip_file} " + " ".join(files_in_zip)
+    elif platform == "win32":
+        powershell_command = "Compress-Archive -Path " + " ".join(files_in_zip) + f" -DestinationPath {zip_file}"
+        command = f'powershell -c "{powershell_command}"'
     else:
         print(
             Color.red + "This platform doesn't have packaging support yet" + Color.clear
         )
+        exit(-1)
+
+    print("Running " + Color.yellow + command + Color.clear)
+    if system(command) == 0:
+        print(
+            Color.green
+            + f"Successfully packaged! You may verify and submit {zip_file}"
+            + Color.clear
+        )
+    else:
+        print(Color.red + "Packaging failed." + Color.clear)
         exit(-1)
     exit(0)
 
@@ -184,12 +189,12 @@ for question in options:
     if system(f"clang-format -i {source_file}") != 0:
         print(Color.red + "Warning: formatting was unsuccessful" + Color.clear)
     else:
-        print(Color.green + "Formatted" + Color.clear)
+        print(Color.green + "Formatted " + Color.clear + source_file)
 
     if system(f"clang -std=c99 {source_file} -o {executable_file}") != 0:
         print(Color.red + "Warning: compilation was unsuccessful" + Color.clear)
     else:
-        print(Color.green + "Compiled" + Color.clear)
+        print(Color.green + "Compiled " + Color.clear + source_file + " to " + executable_file)
 
     for f in files:
         if not isfile(f):
@@ -203,22 +208,28 @@ for question in options:
                 actual_output_file = f"{filename}actual{test_number}.txt"
                 system(command + f" > {actual_output_file}")
 
+                diff_result = ""
                 if platform == "linux" or platform == "linux2" or platform == "darwin":
                     diff_result = popen(
                         f"diff --strip-trailing-cr {actual_output_file} {expected_output}"
                     ).read()
-                    if diff_result == "":
-                        print(Color.green + "Test passed!" + Color.clear)
-                    else:
-                        print(Color.red + "Test failed. Difference:")
-                        print(diff_result + Color.clear)
-                        result = error_result
+                elif platform == "win32":
+                    diff_result = popen(
+                        f"fc {actual_output_file} {expected_output}"
+                    ).read()
                 else:
                     print(
                         Color.red
                         + "This platform does not support testing yet"
                         + Color.clear
                     )
+                    exit(-1)
+                if diff_result == "":
+                    print(Color.green + "Test passed!" + Color.clear)
+                else:
+                    print(Color.red + "Test failed. Difference:")
+                    print(diff_result + Color.clear)
+                    result = error_result
     print()
 
 print(result)
